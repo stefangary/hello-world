@@ -1,1 +1,3 @@
 Some text here to check how branching works.
+
+And now some more text here to check how incremental commits move along a branch.

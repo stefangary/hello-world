@@ -3,3 +3,7 @@ Some text here to check how branching works.
 And now some more text here to check how incremental commits move along a .
 
 And now try a 3rd commit and remove the word branch at the end of the sentence above.
+
+Adding another line.
+
+Just to try direct commits to master branch.

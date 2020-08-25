@@ -7,3 +7,16 @@ Here I wanted to add a line locally via the command line.
 Here I am testing how branching works.
 Adding my text here.  Wow!
 And now I am testing it again with a new commit.  Will this new line be added?  How will it appear in GitHub?
+Here I tried:
+```bash
+git branch -m master main
+git add .
+git commit
+git push origin
+```
+
+But I had to do instead:
+```bash
+git push origin HEAD:master
+```
+

@@ -47,5 +47,12 @@ And then, on the first computer where I have the repo already and tried SSH auth
 git pull
 
 # Should work
-ssh-agent bash -c 'ssh-add /gs/gsfs0/users/gstefan/pw/workflows/tmp_id; git pull
+ssh-agent bash -c 'ssh-add /gs/gsfs0/users/gstefan/pw/workflows/tmp_id; git pull'
+```
+
+Confirmed it does work! Also confirmed that the key is not stored somewhere with `ssh-add` - the `ssh-agent` usage of the key is a one-time. Also confirmed that `ssh-agent` prompts for key password before using it and if key password is wrong, everything stops. So commit and push this last confirmation back to GH:
+```bash
+git add .
+git commit
+ssh-agent bash -c 'ssh-add /gs/gsfs0/users/gstefan/pw/workflows/tmp_id; git push origin'
 ```

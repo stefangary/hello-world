@@ -19,4 +19,14 @@ git push origin --delete master
 git remote set-head origin -a
 ```
 
-
+This is wonderful.  Now, I'm making changes so I can test pushing a commit with SSH authentication.
+I was able to clone the repository with:
+```bash
+ssh-agent bash -c 'ssh-add /gs/gsfs0/users/gstefan/pw/workflows/tmp_id; git clone git@github.com:stefangary/hello-world.git'
+```
+and now I'm going to do:
+```bash
+git add .
+git commit
+ssh-agent bash -c 'ssh-add /gs/gsfs0/users/gstefan/pw/workflows/tmp_id; git push origin'
+```

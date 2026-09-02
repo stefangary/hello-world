@@ -6,7 +6,7 @@
 #==============================
 
 mkdir -p ~/.claude/hooks
-cp require-approval.sh ~/.claude/hooks/require-approval.sh
+cp -iv require-approval.sh ~/.claude/hooks/require-approval.sh
 chmod +x ~/.claude/hooks/require-approval.sh
 
 # Add hook to user-level settings so it applies to 
@@ -16,5 +16,5 @@ chmod +x ~/.claude/hooks/require-approval.sh
 # that snippet. If it already has other keys, add only 
 # the "hooks" block (or merge into an existing "hooks" block).
 # ASSUME NO SETTINGS ARE PRESENT
-cp settings-hook-snipped.json ~/.claude/settings.json
+cp -iv settings-hook-snipped.json ~/.claude/settings.json
 

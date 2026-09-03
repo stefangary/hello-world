@@ -5,6 +5,10 @@
 # in the README.
 #==============================
 
+# Optionally install Claude Code
+# if working on new VM
+#curl -fsSL https://claude.ai/install.sh | bash
+
 mkdir -p ~/.claude/hooks
 cp -iv require-approval.sh ~/.claude/hooks/require-approval.sh
 chmod +x ~/.claude/hooks/require-approval.sh

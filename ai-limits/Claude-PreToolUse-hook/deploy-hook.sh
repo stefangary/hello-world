@@ -20,5 +20,5 @@ chmod +x ~/.claude/hooks/require-approval.sh
 # that snippet. If it already has other keys, add only 
 # the "hooks" block (or merge into an existing "hooks" block).
 # ASSUME NO SETTINGS ARE PRESENT
-cp -iv settings-hook-snipped.json ~/.claude/settings.json
+cp -iv settings-hook-snippet.json ~/.claude/settings.json
 

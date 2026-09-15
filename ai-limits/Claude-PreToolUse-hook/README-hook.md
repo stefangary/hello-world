@@ -1,7 +1,8 @@
 # PreToolUse approval gate for Claude Code
 
 A `PreToolUse` hook that **blocks git state-changes (`git add`/`commit`/`push`
-and friends) and test runs until you explicitly approve them.** It is enforced
+and friends), test runs, and `pw ssh` remote-shell invocations until you
+explicitly approve them.** It is enforced
 by the Claude Code client (exit code 2), not merely suggested to the model, so
 it holds regardless of what Claude decides to do.
 
@@ -19,10 +20,14 @@ fail open.)
 ## What it blocks / allows
 
 - BLOCKS (exit 2): `git add|commit|push|merge|rebase|reset|tag|cherry-pick|am|apply|stash`,
-  and test runners: `pytest`, `py.test`, `python -m pytest|unittest`, `npm/yarn/pnpm/bun (run) test`,
-  `make/just … test`, `go test`, `cargo test`, `tox`, `nox`, and `pw workflows run`.
+  test runners: `pytest`, `py.test`, `python -m pytest|unittest`, `npm/yarn/pnpm/bun (run) test`,
+  `make/just … test`, `go test`, `cargo test`, `tox`, `nox`, and `pw workflows run`,
+  and any `pw ssh <cluster> ...` remote-shell invocation (closes the workaround
+  of piping a gated command, e.g. `git add`, through a remote shell to bypass
+  the git-write rule above).
 - ALLOWS (exit 0): read-only git (`status`, `log`, `diff`, `branch`, `show`),
-  and everything else (ls, cat, pip install, editing files, etc.).
+  other `pw` subcommands (e.g. `pw status`, `pw jobs`), and everything else
+  (ls, cat, pip install, editing files, etc.).
 - FAILS CLOSED: if the command can't be parsed, it blocks. Uses `jq` when
   present; falls back to a `sed` extractor when `jq` isn't installed.
 
@@ -59,13 +64,16 @@ edits to settings files during a session. So either:
    a `PreToolUse` entry, matcher `Bash`, type `[command]`, source
    `User Settings`, pointing at `require-approval.sh`. This confirms Claude Code
    registered it.
-2. **Live test — block path.** Ask Claude to run a harmless *blocked* command,
-   e.g. "run `git status && git add -n .`" (the `add` triggers the gate). You
-   should see the tool call blocked with the reason text from the hook. A plain
-   "run `git status`" should NOT be blocked.
-3. **Live test — allow path.** Ask Claude to run `ls`. It should proceed
+2. **Live test — block path (git).** Ask Claude to run a harmless *blocked*
+   command, e.g. "run `git status && git add -n .`" (the `add` triggers the
+   gate). You should see the tool call blocked with the reason text from the
+   hook. A plain "run `git status`" should NOT be blocked.
+3. **Live test — block path (pw ssh).** Ask Claude to run a harmless *blocked*
+   command, e.g. "run `pw ssh aws echo hi`". You should see the tool call
+   blocked with the pw-ssh reason text from the hook.
+4. **Live test — allow path.** Ask Claude to run `ls`. It should proceed
    normally. This confirms the gate isn't over-blocking.
-4. **Watch for a silent-disable notice.** If you ever see
+5. **Watch for a silent-disable notice.** If you ever see
    `Failed with non-blocking status code: … require-approval.sh: No such file
    or directory`, the path in settings is wrong and **the gate is off** — fix
    the path. (A mistyped hook path fails open, so this check matters.)
@@ -80,8 +88,9 @@ The gate is deny-by-default. When YOU decide to allow a specific blocked action,
 approve it by setting an environment variable **for that action**, then let
 Claude retry. Options, from narrowest to widest:
 
-- Approve the next git-write only:  export `CLAUDE_APPROVE_GIT=1`
+- Approve the next git-write only:   export `CLAUDE_APPROVE_GIT=1`
 - Approve the next test run only:    export `CLAUDE_APPROVE_TESTS=1`
+- Approve the next pw ssh only:      export `CLAUDE_APPROVE_SSH=1`
 - Approve everything (escape hatch): export `CLAUDE_APPROVE_ALL=1`
 
 Because the hook reads the environment Claude Code was launched with, the

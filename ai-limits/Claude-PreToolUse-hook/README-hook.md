@@ -1,8 +1,9 @@
 # PreToolUse approval gate for Claude Code
 
 A `PreToolUse` hook that **blocks git state-changes (`git add`/`commit`/`push`
-and friends), test runs, and `pw ssh` remote-shell invocations until you
-explicitly approve them.** It is enforced
+and friends), test runs, `pw ssh` remote-shell invocations, and recursive
+deletes of shared container directories until you explicitly approve them.**
+It is enforced
 by the Claude Code client (exit code 2), not merely suggested to the model, so
 it holds regardless of what Claude decides to do.
 
@@ -24,7 +25,9 @@ fail open.)
   `make/just … test`, `go test`, `cargo test`, `tox`, `nox`, and `pw workflows run`,
   and any `pw ssh <cluster> ...` remote-shell invocation (closes the workaround
   of piping a gated command, e.g. `git add`, through a remote shell to bypass
-  the git-write rule above).
+  the git-write rule above), and `rm -rf` (or similar) of a shared CONTAINER
+  directory such as `~/pw`, `~/pw/jobs`, `~/.claude`, `~/`, `/tmp`, or `/`
+  (deleting a named child underneath, e.g. `~/pw/jobs/my-run`, is still allowed).
 - ALLOWS (exit 0): read-only git (`status`, `log`, `diff`, `branch`, `show`),
   other `pw` subcommands (e.g. `pw status`, `pw jobs`), and everything else
   (ls, cat, pip install, editing files, etc.).
@@ -71,9 +74,13 @@ edits to settings files during a session. So either:
 3. **Live test — block path (pw ssh).** Ask Claude to run a harmless *blocked*
    command, e.g. "run `pw ssh aws echo hi`". You should see the tool call
    blocked with the pw-ssh reason text from the hook.
-4. **Live test — allow path.** Ask Claude to run `ls`. It should proceed
+4. **Live test — block path (protected rm).** Ask Claude to run a harmless
+   *blocked* command, e.g. "run `rm -rf ~/pw`". You should see the tool call
+   blocked with the protected-directory reason text from the hook. A plain
+   "run `rm -rf ~/pw/jobs/my-run`" should NOT be blocked.
+5. **Live test — allow path.** Ask Claude to run `ls`. It should proceed
    normally. This confirms the gate isn't over-blocking.
-5. **Watch for a silent-disable notice.** If you ever see
+6. **Watch for a silent-disable notice.** If you ever see
    `Failed with non-blocking status code: … require-approval.sh: No such file
    or directory`, the path in settings is wrong and **the gate is off** — fix
    the path. (A mistyped hook path fails open, so this check matters.)
@@ -91,6 +98,7 @@ Claude retry. Options, from narrowest to widest:
 - Approve the next git-write only:   export `CLAUDE_APPROVE_GIT=1`
 - Approve the next test run only:    export `CLAUDE_APPROVE_TESTS=1`
 - Approve the next pw ssh only:      export `CLAUDE_APPROVE_SSH=1`
+- Approve the next protected-dir rm only: export `CLAUDE_APPROVE_RM=1`
 - Approve everything (escape hatch): export `CLAUDE_APPROVE_ALL=1`
 
 Because the hook reads the environment Claude Code was launched with, the

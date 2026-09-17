@@ -2,12 +2,15 @@
 # =============================================================================
 # require-approval.sh  —  Claude Code PreToolUse gate
 #
-# Blocks three classes of Bash command until YOU explicitly approve them:
+# Blocks four classes of Bash command until YOU explicitly approve them:
 #   1. git state changes:  git add / commit / push  (and a few close cousins)
 #   2. test runs:          pytest, npm/yarn/pnpm test, tox, make test, etc.
 #   3. pw ssh:             any `pw ssh <cluster> ...` remote-shell invocation
 #                          (closes the workaround of piping a gated command,
 #                          e.g. a git write, through a remote shell)
+#   4. recursive deletes:  rm -rf (or similar) of a shared CONTAINER directory
+#                          (e.g. ~/pw, ~/pw/jobs, ~/.claude, ~/, /tmp, /) —
+#                          deleting a named child underneath is still allowed
 #
 # HOW IT BLOCKS: on a match it writes a reason to stderr and exits 2. For a
 # PreToolUse hook, exit code 2 blocks the tool call unconditionally — the
@@ -32,12 +35,14 @@ set -uo pipefail
 # Approve the NEXT git-write:   CLAUDE_APPROVE_GIT=1
 # Approve the NEXT test run:    CLAUDE_APPROVE_TESTS=1
 # Approve the NEXT pw ssh:      CLAUDE_APPROVE_SSH=1
+# Approve the NEXT rm of a protected directory: CLAUDE_APPROVE_RM=1
 # Approve absolutely everything (escape hatch): CLAUDE_APPROVE_ALL=1
 # These are read from the hook process environment, i.e. the environment Claude
 # Code itself was launched with. See the "How to approve" notes below.
 APPROVE_GIT="${CLAUDE_APPROVE_GIT:-0}"
 APPROVE_TESTS="${CLAUDE_APPROVE_TESTS:-0}"
 APPROVE_SSH="${CLAUDE_APPROVE_SSH:-0}"
+APPROVE_RM="${CLAUDE_APPROVE_RM:-0}"
 APPROVE_ALL="${CLAUDE_APPROVE_ALL:-0}"
 
 if [[ "$APPROVE_ALL" == "1" ]]; then
@@ -142,6 +147,50 @@ if printf '%s' "$norm" | grep -qE '(^|[^[:alnum:]_])pw([[:space:]]+-[^[:space:]]
     echo "ask the user to approve. Do not attempt a workaround."
   } >&2
   exit 2
+fi
+
+# ---- Rule 4: recursive deletes of PROTECTED CONTAINER directories -----------
+# Approve the NEXT one with: CLAUDE_APPROVE_RM=1
+#
+# The failure this prevents: an agent asked to clean up its own artifacts ran
+#   rm -rf ~/pw/jobs
+# instead of naming the two directories it owned, destroying an unrelated
+# workflow's job dir that happened to live under the same parent.
+#
+# The rule is deliberately narrow: it does NOT block deleting a named CHILD
+# (rm -rf ~/pw/jobs/my-run is fine). It blocks deleting the CONTAINER itself,
+# which is the shape that takes out other people's data.
+
+# Shared roots that hold artifacts from many runs/tools. Add your own.
+PROTECTED_DIRS=(
+  "$HOME/pw/jobs"
+  "$HOME/pw"
+  "$HOME/.claude"
+  "$HOME"
+  "/tmp"
+  "/"
+)
+
+if printf '%s' "$norm" | grep -qE '(^|[^[:alnum:]_/])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*[[:space:]]+|-[a-zA-Z]+[[:space:]]+-[a-zA-Z]+[[:space:]]+)'; then
+  for prot in "${PROTECTED_DIRS[@]}"; do
+    # Match the protected path as a COMPLETE argument: a trailing slash or nothing,
+    # but not when followed by another path segment (that is a child, and allowed).
+    if printf '%s' "$norm" | grep -qE "(^|[[:space:]])[\"']?${prot}/?[\"']?([[:space:]]|$)"; then
+      if [[ "$APPROVE_RM" == "1" ]]; then break; fi
+      {
+        echo "BLOCKED (require-approval hook): recursive delete of a protected directory."
+        echo "Command: ${norm}"
+        echo "Protected path: ${prot}"
+        echo
+        echo "This deletes a SHARED container directory, not just your own artifacts."
+        echo "Delete the specific subdirectories you created instead, e.g."
+        echo "    rm -rf ${prot}/<the-one-you-made>"
+        echo "If you really mean the whole directory, the user approves it with"
+        echo "CLAUDE_APPROVE_RM=1."
+      } >&2
+      exit 2
+    fi
+  done
 fi
 
 # ---- Default: no match, no opinion ------------------------------------------

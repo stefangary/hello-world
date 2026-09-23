@@ -89,7 +89,7 @@ norm="$(printf '%s' "$command" | tr '\n' ' ' | tr -s ' ')"
 # Match git add / commit / push anywhere in the command (covers `&&` chains and
 # leading VAR=val assignments). Deliberately does NOT block read-only git
 # (status, log, diff, branch, show) so Claude can still inspect the repo freely.
-if printf '%s' "$norm" | grep -qE '(^|[^[:alnum:]_])git([[:space:]]+-[^[:space:]]+)*[[:space:]]+(add|commit|push|merge|rebase|reset|tag|cherry-pick|am|apply|stash[[:space:]]+(push|pop|drop|apply)?)([^[:alnum:]_]|$)'; then
+if printf '%s' "$norm" | grep -qE '(^|[^[:alnum:]_])git([[:space:]]+-[^[:space:]]+)*[[:space:]]+(add|commit|push|merge|rebase|reset|tag|cherry-pick|am|rm|apply|stash[[:space:]]+(push|pop|drop|apply)?)([^[:alnum:]_]|$)'; then
   if [[ "$APPROVE_GIT" == "1" ]]; then
     exit 0
   fi
